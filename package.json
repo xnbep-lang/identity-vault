@@ -13,7 +13,6 @@
     "dev:frontend": "cd frontend/mini-app && npm start",
     "start:backend": "cd backend && npm start",
     "start:bot": "cd telegram-bot && npm start",
-    "test": "cd backend && npm test",
     "test:bot": "cd telegram-bot && npm test",
     "attack": "node security/run-attacks.js",
     "docker:up": "docker-compose -f infrastructure/docker-compose.yml up",
