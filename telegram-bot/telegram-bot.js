@@ -434,6 +434,16 @@ app.post('/notify-profile-complete', async (req, res) => {
   }
 });
 
+// Root route (so the Mini App / browser doesn't show "Cannot GET /")
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Identity Vault API is running',
+    health: '/health',
+    docs: 'See /health for status'
+  });
+});
+
 // ============= HEALTH CHECK =============
 
 app.get('/health', (req, res) => {
