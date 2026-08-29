@@ -622,6 +622,16 @@ app.get('/api/profiles/:profileId/security-report', authenticateUser, async (req
   }
 });
 
+// Root route (so the Mini App / browser doesn't show "Cannot GET /")
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Identity Vault API is running',
+    health: '/health',
+    docs: 'See /health for status'
+  });
+});
+
 // 6. HEALTH CHECK
 app.get('/health', (req, res) => {
   res.json({
