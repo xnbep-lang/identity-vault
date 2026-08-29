@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Identity Vault</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0a0b14;
+    --panel:#12141f;
+    --panel-2:#1a1d2c;
+    --line:#262a3d;
+    --ink:#ecedfb;
+    --ink-dim:#8a8fb3;
+    --signal:#7c6cff;
+    --signal-dim:#332c66;
+    --gold:#e8b563;
+    --danger:#e8607a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--void);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior-y:contain;
+  }
+  body::before{
+    content:'';
+    position:fixed; inset:0;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(124,108,255,0.16), transparent 55%),
+      radial-gradient(circle at 100% 110%, rgba(232,181,99,0.08), transparent 45%);
+    pointer-events:none;
+  }
+  #app{
+    position:relative;
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    padding:28px 20px 40px;
+    display:flex;
+    flex-direction:column;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--signal);display:inline-block;margin-right:8px;box-shadow:0 0 8px var(--signal);}
+
+  /* ---- dial ---- */
+  .dial-wrap{ display:flex; justify-content:center; margin:22px 0 8px; }
+  .dial-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    fill:var(--ink-dim);
+  }
+  .dial-count{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:26px;
+    font-weight:700;
+    fill:var(--ink);
+  }
+  .tick{ transition:stroke .5s ease, opacity .5s ease; }
+
+  /* ---- screens ---- */
+  .screen{ display:none; flex:1; flex-direction:column; animation:rise .45s ease both; }
+  .screen.active{ display:flex; }
+  @keyframes rise{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:700;
+    font-size:30px;
+    line-height:1.15;
+    margin:6px 0 10px;
+    letter-spacing:-0.01em;
+  }
+  p.lede{ color:var(--ink-dim); font-size:15px; line-height:1.55; margin:0 0 26px; }
+
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-size:15px;
+    font-weight:500;
+    color:var(--ink);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 18px;
+    text-align:left;
+    cursor:pointer;
+    transition:transform .12s ease, border-color .2s ease, background .2s ease;
+    -webkit-user-select:none; user-select:none;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn.primary{
+    background:linear-gradient(135deg,var(--signal),#5a4de0);
+    border-color:transparent;
+    text-align:center;
+    font-weight:600;
+    box-shadow:0 10px 30px -12px rgba(124,108,255,.65);
+  }
+  .btn.ghost{
+    background:transparent;
+    text-align:center;
+    color:var(--ink-dim);
+  }
+  .btn[disabled]{ opacity:.5; pointer-events:none; }
+
+  /* welcome */
+  .welcome-spacer{ flex:1; }
+  .fingerprint-glyph{ opacity:.9; }
+
+  /* question */
+  .qcounter{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--signal);
+    letter-spacing:.1em;
+    margin-bottom:10px;
+  }
+  .qtext{ font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; line-height:1.3; margin:0 0 28px; }
+  .choices{ display:flex; flex-direction:column; gap:12px; }
+  .choice{
+    padding:20px 18px;
+    border-radius:16px;
+    border:1px solid var(--line);
+    background:var(--panel);
+    font-size:16px;
+    font-weight:500;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    transition:border-color .2s ease, background .2s ease, transform .12s ease;
+  }
+  .choice:active{ transform:scale(.98); }
+  .choice .mark{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-dim);
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:3px 7px;
+  }
+  .choice.picked{ border-color:var(--gold); background:rgba(232,181,99,.08); }
+  .choice.dim{ opacity:.35; pointer-events:none; }
+
+  /* loading */
+  .loading-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; }
+  .spinner{ width:46px; height:46px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--gold); animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loading-text{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-dim); letter-spacing:.08em; }
+
+  /* result */
+  .archetype{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:32px; letter-spacing:-0.01em; margin:4px 0 14px; color:var(--gold); }
+  .meter-row{ display:flex; align-items:center; gap:10px; margin-bottom:22px; }
+  .meter{ flex:1; height:8px; border-radius:99px; background:var(--panel-2); overflow:hidden; }
+  .meter > i{ display:block; height:100%; background:linear-gradient(90deg,var(--signal),var(--gold)); border-radius:99px; transition:width .8s ease; }
+  .meter-pct{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-dim); min-width:34px; text-align:right; }
+
+  .traits{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+  .trait{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:6px 11px;
+    border-radius:99px;
+    border:1px solid var(--line);
+    color:var(--ink-dim);
+  }
+  .pattern{ font-size:15px; line-height:1.6; color:var(--ink); margin:0 0 18px; }
+  .reco{
+    font-size:13px; line-height:1.55; color:var(--ink-dim);
+    border-left:2px solid var(--signal);
+    padding:2px 0 2px 14px;
+    margin:0 0 30px;
+  }
+  .result-actions{ display:flex; flex-direction:column; gap:10px; margin-top:auto; }
+
+  /* error */
+  .error-box{
+    background:rgba(232,96,122,.08);
+    border:1px solid rgba(232,96,122,.35);
+    color:#f4b7c4;
+    border-radius:14px;
+    padding:16px;
+    font-size:14px;
+    line-height:1.5;
+    margin-bottom:16px;
+  }
+
+  .footer-mark{
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.14em;
+    color:#3c4058;
+    margin-top:24px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="eyebrow">
+    <span><span class="dot"></span>IDENTITY VAULT</span>
+    <span id="sessionTag">SESSION —</span>
+  </div>
+
+  <div class="dial-wrap">
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="52" fill="none" stroke="#1a1d2c" stroke-width="3"/>
+      <g id="ticks"></g>
+      <text x="60" y="56" text-anchor="middle" class="dial-count" id="dialCount">0</text>
+      <text x="60" y="74" text-anchor="middle" class="dial-label">of 5</text>
+    </svg>
+  </div>
+
+  <!-- WELCOME -->
+  <section class="screen active" id="screen-welcome">
+    <h1>Build a fingerprint<br/>only you would answer.</h1>
+    <p class="lede">Five contextual questions, generated on the fly. Your answers become an identity archetype you can use to verify yourself later — no password required.</p>
+    <div id="welcomeError"></div>
+    <div class="welcome-spacer"></div>
+    <button class="btn primary" id="btnBegin">Begin session</button>
+  </section>
+
+  <!-- QUESTION -->
+  <section class="screen" id="screen-question">
+    <div class="qcounter" id="qcounter">QUESTION 1 / 5</div>
+    <div class="qtext" id="qtext">—</div>
+    <div class="choices">
+      <div class="choice" id="choiceA"><span id="choiceAText"></span><span class="mark">A</span></div>
+      <div class="choice" id="choiceB"><span id="choiceBText"></span><span class="mark">B</span></div>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <section class="screen" id="screen-loading">
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">READING THE PATTERN…</div>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" id="screen-result">
+    <div class="qcounter">ARCHETYPE REVEALED</div>
+    <div class="archetype" id="rArchetype">—</div>
+    <div class="meter-row">
+      <div class="meter"><i id="rMeterFill" style="width:0%"></i></div>
+      <div class="meter-pct" id="rMeterPct">0%</div>
+    </div>
+    <div class="traits" id="rTraits"></div>
+    <p class="pattern" id="rPattern"></p>
+    <div class="reco" id="rReco"></div>
+    <div class="result-actions">
+      <button class="btn primary" id="btnAgain">Strengthen vault — new session</button>
+      <button class="btn ghost" id="btnDone">Done</button>
+    </div>
+  </section>
+
+  <!-- ERROR -->
+  <section class="screen" id="screen-error">
+    <h1>Something broke.</h1>
+    <div class="error-box" id="errText">—</div>
+    <button class="btn primary" id="btnRetry">Try again</button>
+  </section>
+
+  <div class="footer-mark">VAULT · AI-PROFILED · SELF-TESTED ONLY</div>
+</div>
+
+<script>
+(function(){
+  var TG = window.Telegram && window.Telegram.WebApp;
+  if (TG) { try { TG.ready(); TG.expand(); TG.setHeaderColor && TG.setHeaderColor('#0a0b14'); TG.setBackgroundColor && TG.setBackgroundColor('#0a0b14'); } catch(e) {} }
+
+  var TOTAL = 5;
+  var state = {
+    token: localStorage.getItem('vault_token') || null,
+    profileId: null,
+    sessionNumber: null,
+    answers: [],
+    current: null,
+    lastAction: null
+  };
+
+  // ---------- identity ----------
+  function getTelegramUser(){
+    try {
+      if (TG && TG.initDataUnsafe && TG.initDataUnsafe.user) return TG.initDataUnsafe.user;
+    } catch(e) {}
+    var params = new URLSearchParams(window.location.search);
+    var qid = params.get('telegramId');
+    if (qid) return { id: qid };
+    var stored = localStorage.getItem('vault_guest_id');
+    if (!stored) { stored = 'guest_' + Math.random().toString(36).slice(2, 10); localStorage.setItem('vault_guest_id', stored); }
+    return { id: stored };
+  }
+  var tgUser = getTelegramUser();
+  var username = 'tg_' + tgUser.id;
+  var password = 'vault_' + tgUser.id + '_secure';
+
+  // ---------- api ----------
+  function api(path, opts){
+    opts = opts || {};
+    var headers = { 'Content-Type': 'application/json' };
+    if (state.token) headers['Authorization'] = 'Bearer ' + state.token;
+    return fetch(path, {
+      method: opts.method || 'GET',
+      headers: headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(data){
+        if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+        return data;
+      });
+    });
+  }
+
+  function ensureAuth(){
+    if (state.token) return Promise.resolve(state.token);
+    return api('/api/auth/login', { method: 'POST', body: { username: username, password: password } })
+      .then(function(data){ state.token = data.token; localStorage.setItem('vault_token', data.token); return data.token; })
+      .catch(function(){
+        return api('/api/auth/register', { method: 'POST', body: { telegram_id: String(tgUser.id), username: username, password: password } })
+          .then(function(data){ state.token = data.token; localStorage.setItem('vault_token', data.token); return data.token; });
+      });
+  }
+
+  // ---------- dial ----------
+  var ticksG = document.getElementById('ticks');
+  var TICK_COUNT = TOTAL;
+  var R = 52, CX = 60, CY = 60;
+  for (var i = 0; i < TICK_COUNT; i++){
+    var a0 = (-90 + (360/TICK_COUNT)*i + 4) * Math.PI/180;
+    var a1 = (-90 + (360/TICK_COUNT)*(i+1) - 4) * Math.PI/180;
+    var x0 = CX + R*Math.cos(a0), y0 = CY + R*Math.sin(a0);
+    var x1 = CX + R*Math.cos(a1), y1 = CY + R*Math.sin(a1);
+    var path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', 'M '+x0+' '+y0+' A '+R+' '+R+' 0 0 1 '+x1+' '+y1);
+    path.setAttribute('stroke', '#262a3d');
+    path.setAttribute('stroke-width', '5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap', 'round');
+    path.classList.add('tick');
+    ticksG.appendChild(path);
+  }
+  function setDial(n){
+    document.getElementById('dialCount').textContent = n;
+    var ticks = ticksG.querySelectorAll('.tick');
+    ticks.forEach(function(t, idx){
+      t.setAttribute('stroke', idx < n ? '#e8b563' : '#262a3d');
+    });
+  }
+
+  // ---------- screens ----------
+  function show(id){
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+  function showErrorScreen(msg, retryFn){
+    document.getElementById('errText').textContent = msg;
+    state.lastAction = retryFn;
+    show('screen-error');
+  }
+
+  // ---------- flow ----------
+  document.getElementById('btnBegin').addEventListener('click', function(){ startSession(); });
+  document.getElementById('btnAgain').addEventListener('click', function(){
+    state.profileId = null; state.answers = []; setDial(0);
+    startSession();
+  });
+  document.getElementById('btnDone').addEventListener('click', function(){
+    if (TG && TG.close) { try { TG.close(); } catch(e){} }
+  });
+  document.getElementById('btnRetry').addEventListener('click', function(){
+    if (state.lastAction) state.lastAction();
+  });
+
+  function startSession(){
+    document.getElementById('btnBegin').setAttribute('disabled','disabled');
+    ensureAuth()
+      .then(function(){ return api('/api/profiles/create', { method: 'POST' }); })
+      .then(function(data){
+        state.profileId = data.profileId;
+        state.sessionNumber = data.sessionNumber;
+        document.getElementById('sessionTag').textContent = 'SESSION ' + data.sessionNumber;
+        sendToBot({ event: 'profile_created', profileId: data.profileId, sessionNumber: data.sessionNumber });
+        loadNextQuestion();
+      })
+      .catch(function(err){
+        document.getElementById('btnBegin').removeAttribute('disabled');
+        showErrorScreen(err.message || 'Could not start a session.', startSession);
+      });
+  }
+
+  function loadNextQuestion(){
+    if (state.answers.length >= TOTAL) { analyze(); return; }
+    show('screen-loading');
+    document.getElementById('loadingText').textContent = 'GENERATING QUESTION ' + (state.answers.length+1) + ' / ' + TOTAL;
+    api('/api/questions/generate', { method: 'POST', body: { existing_answers: state.answers } })
+      .then(function(data){
+        state.current = data;
+        document.getElementById('qcounter').textContent = 'QUESTION ' + (state.answers.length+1) + ' / ' + TOTAL;
+        document.getElementById('qtext').textContent = data.question;
+        document.getElementById('choiceAText').textContent = data.optionA;
+        document.getElementById('choiceBText').textContent = data.optionB;
+        var a = document.getElementById('choiceA'), b = document.getElementById('choiceB');
+        a.classList.remove('picked','dim'); b.classList.remove('picked','dim');
+        a.onclick = function(){ pick(data.optionA, a, b); };
+        b.onclick = function(){ pick(data.optionB, b, a); };
+        show('screen-question');
+      })
+      .catch(function(err){ showErrorScreen(err.message || 'Could not load the next question.', loadNextQuestion); });
+  }
+
+  function pick(answerText, chosenEl, otherEl){
+    chosenEl.classList.add('picked');
+    otherEl.classList.add('dim');
+    var order = state.answers.length + 1;
+    api('/api/profiles/' + state.profileId + '/answers', {
+      method: 'POST',
+      body: { question: state.current.question, answer: answerText, question_order: order }
+    }).then(function(){
+      state.answers.push({ question: state.current.question, answer: answerText });
+      setDial(state.answers.length);
+      setTimeout(loadNextQuestion, 260);
+    }).catch(function(err){
+      showErrorScreen(err.message || 'Could not save that answer.', function(){ loadNextQuestion(); });
+    });
+  }
+
+  function analyze(){
+    show('screen-loading');
+    document.getElementById('loadingText').textContent = 'READING THE PATTERN…';
+    api('/api/profiles/' + state.profileId + '/analyze', { method: 'POST' })
+      .then(function(data){
+        renderResult(data.profile);
+        sendToBot({ event: 'profile_analyzed', profile: data.profile });
+        show('screen-result');
+      })
+      .catch(function(err){ showErrorScreen(err.message || 'Could not analyze your answers.', analyze); });
+  }
+
+  function renderResult(profile){
+    document.getElementById('rArchetype').textContent = profile.archetype || 'Unresolved Pattern';
+    var pct = Math.max(0, Math.min(100, profile.strengthScore || 0));
+    document.getElementById('rMeterFill').style.width = pct + '%';
+    document.getElementById('rMeterPct').textContent = pct + '%';
+    var traitsWrap = document.getElementById('rTraits');
+    traitsWrap.innerHTML = '';
+    (profile.traits || []).forEach(function(t){
+      var span = document.createElement('span');
+      span.className = 'trait'; span.textContent = t;
+      traitsWrap.appendChild(span);
+    });
+    document.getElementById('rPattern').textContent = profile.patterns || '';
+    document.getElementById('rReco').textContent = profile.recommendation || '';
+  }
+
+  function sendToBot(payload){
+    if (!TG || !TG.sendData) return;
+    try { TG.sendData(JSON.stringify(payload)); } catch(e) {}
+  }
+})();
+</script>
+</body>
+</html>
