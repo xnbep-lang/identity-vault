@@ -1,0 +1,24 @@
+{
+  "name": "identity-vault",
+  "version": "1.0.0",
+  "description": "AI-powered identity profiling system with Telegram integration",
+  "main": "backend/server.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:bot": "cd telegram-bot && npm run dev",
+    "dev:frontend": "cd frontend/mini-app && npm start",
+    "start:backend": "cd backend && npm start",
+    "start:bot": "cd telegram-bot && npm start",
+    "test": "cd backend && npm test",
+    "test:bot": "cd telegram-bot && npm test",
+    "attack": "node security/run-attacks.js",
+    "docker:up": "docker-compose -f infrastructure/docker-compose.yml up",
+    "docker:down": "docker-compose -f infrastructure/docker-compose.yml down",
+    "docker:build": "docker-compose -f infrastructure/docker-compose.yml build",
+    "deploy:railway": "echo 'Push to GitHub and Railway will auto-deploy'",
+    "deploy:heroku": "bash infrastructure/deploy.sh"
+  },
+  "keywords": ["identity", "security", "telegram", "ai", "verification", "railway"],
+  "author": "",
+  "license": "MIT"
+}
